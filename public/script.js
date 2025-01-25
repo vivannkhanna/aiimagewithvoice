@@ -3,9 +3,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopRecordButton = document.getElementById('stopRecord');
     const statusDiv = document.getElementById('status');
     const playerDiv = document.getElementById('player');
+    const consentModal = document.getElementById('consentModal');
+    const consentAgree = document.getElementById('consentAgree');
+    const consentDecline = document.getElementById('consentDecline');
 
     let mediaRecorder;
     let audioChunks = [];
+
+    consentModal.style.display = 'flex';
+
+    // consent stuff
+    consentAgree.addEventListener('click', () => {
+        consentModal.style.display = 'none';
+        startRecordButton.disabled = false;
+    });
+
+    consentDecline.addEventListener('click', () => {
+        consentModal.style.display = 'none';
+        statusDiv.textContent = 'You declined consent. You can\'t record audio.';
+    });
 
     startRecordButton.addEventListener('click', () => {
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -14,19 +30,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
-                mediaRecorder.onstop = () => {
+                mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const url = URL.createObjectURL(audioBlob);
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.wav');
 
-                    const audioElement = document.createElement('audio');
-                    audioElement.controls = true;
-                    audioElement.src = url;
+                    try {
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
 
-                    playerDiv.innerHTML = '';
-                    playerDiv.appendChild(audioElement);
+                        if (response.ok) {
+                            const data = await response.json();
+                            statusDiv.textContent = 'Transcription: ' + data.transcription;
 
-                    statusDiv.textContent = 'Recording saved.';
-                    audioChunks = [];
+                            const imgElement = document.createElement('img');
+                            imgElement.src = data.imageUrl;
+                            imgElement.alt = 'Generated Image';
+                            imgElement.style.maxWidth = '100%';
+                            playerDiv.appendChild(imgElement);
+                        } else {
+                            statusDiv.textContent = 'Error in transcription or image generation.';
+                        }
+                    } catch (error) {
+                        console.error('Error uploading audio:', error);
+                        statusDiv.textContent = 'Error in transcription or image generation.';
+                    }
                 };
                 mediaRecorder.start();
                 statusDiv.textContent = 'Recording...';
@@ -44,34 +74,5 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'Processing...';
         startRecordButton.disabled = false;
         stopRecordButton.disabled = true;
-
-        mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            const formData = new FormData();
-            formData.append('audio', audioBlob, 'recording.wav');
-
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    statusDiv.textContent = 'Transcription: ' + data.transcription;
-
-                    const imgElement = document.createElement('img');
-                    imgElement.src = data.imageUrl;
-                    imgElement.alt = 'Generated Image';
-                    imgElement.style.maxWidth = '100%';
-                    playerDiv.appendChild(imgElement);
-                } else {
-                    statusDiv.textContent = 'Error in transcription or image generation.';
-                }
-            } catch (error) {
-                console.error('Error uploading audio:', error);
-                statusDiv.textContent = 'Error in transcription or image generation.';
-            }
-        };
     });
 });
