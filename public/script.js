@@ -45,6 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             const data = await response.json();
                             statusDiv.textContent = 'Transcription: ' + data.transcription;
 
+                            // deletes prior image
+                            const previousImage = playerDiv.querySelector('img');
+                            if (previousImage) {
+                                playerDiv.removeChild(previousImage);
+                            }
+
                             const imgElement = document.createElement('img');
                             imgElement.src = data.imageUrl;
                             imgElement.alt = 'Generated Image';
