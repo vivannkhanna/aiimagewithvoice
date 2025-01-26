@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         statusDiv.textContent = 'Error in transcription or image generation.';
                     }
                 };
-                mediaRecorder.start();
+                mediaRecorder.start(1000);
                 statusDiv.textContent = 'Recording...';
                 startRecordButton.disabled = true;
                 stopRecordButton.disabled = false;
